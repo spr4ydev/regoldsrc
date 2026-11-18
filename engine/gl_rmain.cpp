@@ -1,4 +1,4 @@
-//========= Copyright � 1996-2002, Valve LLC, All rights reserved. ============
+﻿//========= Copyright ï¿½ 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose: 
 //
@@ -546,6 +546,292 @@ void GL_DrawAliasShadow( aliashdr_t* paliashdr, int posenum )
 
 
 
+//======================================================================
+// MDL (studio) model VBO renderer
+//
+// The classic alias renderer issued texcoord+color+vertex immediate-mode
+// calls for every vertex every frame. Here each model's geometry is
+// uploaded to static VBOs once (positions for all poses, texcoords and a
+// triangle index list) and every pose is drawn with a single
+// glDrawElements call. Only the per-vertex colors (which depend on the
+// entity's lighting/yaw) are rebuilt per draw into a streaming VBO.
+//======================================================================
+
+extern PFNGLGENBUFFERSPROC    qglGenBuffersM;
+extern PFNGLBINDBUFFERPROC    qglBindBufferM;
+extern PFNGLBUFFERDATAPROC    qglBufferDataM;
+extern PFNGLDELETEBUFFERSPROC qglDeleteBuffersM;
+
+#define MDL_VBO_CACHE 256
+
+typedef struct mdlvbo_s
+{
+	model_t*    model;
+	aliashdr_t* hdr;
+	int         poseverts;
+	int         numposes;
+	int         numindices;
+	GLuint      vboPos;
+	GLuint      vboTex;
+	GLuint      vboIdx;
+	GLuint      vboCol;
+} mdlvbo_t;
+
+static mdlvbo_t s_mdlvbo[MDL_VBO_CACHE];
+static int      s_mdlvboCount = 0;
+static float*   s_mdlColorBuf = NULL;
+static int      s_mdlColorBufSize = 0;
+
+static bool R_MdlVBOAvailable( void )
+{
+	return gl_mdl_vbo.value != 0.0f && qglGenBuffersM && qglBindBufferM && qglBufferDataM && qglDeleteBuffersM;
+}
+
+void R_MdlVBOInvalidate( void )
+{
+	// Context was (re)created: GL object names are gone, just drop the cache.
+	s_mdlvboCount = 0;
+	memset( s_mdlvbo, 0, sizeof( s_mdlvbo ) );
+}
+
+void R_MdlVBOFlush( void )
+{
+	if ( qglDeleteBuffersM )
+	{
+		for ( int i = 0; i < s_mdlvboCount; i++ )
+		{
+			if ( s_mdlvbo[i].vboPos ) qglDeleteBuffersM( 1, &s_mdlvbo[i].vboPos );
+			if ( s_mdlvbo[i].vboTex ) qglDeleteBuffersM( 1, &s_mdlvbo[i].vboTex );
+			if ( s_mdlvbo[i].vboIdx ) qglDeleteBuffersM( 1, &s_mdlvbo[i].vboIdx );
+			if ( s_mdlvbo[i].vboCol ) qglDeleteBuffersM( 1, &s_mdlvbo[i].vboCol );
+		}
+	}
+
+	R_MdlVBOInvalidate();
+}
+
+static mdlvbo_t* R_MdlVBOFind( model_t* model, aliashdr_t* hdr )
+{
+	for ( int i = 0; i < s_mdlvboCount; i++ )
+	{
+		if ( s_mdlvbo[i].model == model )
+			return s_mdlvbo[i].hdr == hdr ? &s_mdlvbo[i] : NULL;
+	}
+
+	return NULL;
+}
+
+static mdlvbo_t* R_MdlVBOGet( model_t* model, aliashdr_t* hdr )
+{
+	mdlvbo_t* e = R_MdlVBOFind( model, hdr );
+
+	if ( e )
+		return e;
+
+	if ( s_mdlvboCount >= MDL_VBO_CACHE )
+		return NULL;
+
+	const int poseverts = hdr->poseverts;
+	const int numposes = hdr->numposes;
+
+	if ( poseverts <= 0 || poseverts > 60000 || numposes <= 0 )
+		return NULL;
+
+	int* order = (int*)( (byte*)hdr + hdr->commands );
+
+	// Count triangles (strips/fans are expanded to independent triangles)
+	int numindices = 0;
+
+	for ( int* o = order;; )
+	{
+		int c = *o++;
+
+		if ( !c )
+			break;
+
+		if ( c < 0 ) c = -c;
+
+		if ( c >= 3 ) numindices += ( c - 2 ) * 3;
+
+		o += c * 2;
+	}
+
+	if ( numindices == 0 )
+		return NULL;
+
+	const int totalVerts = poseverts * numposes;
+
+	short*          pos = (short*)Mem_Malloc( totalVerts * 3 * sizeof( short ) );
+	float*          tex = (float*)Mem_Malloc( poseverts * 2 * sizeof( float ) );
+	unsigned short* idx = (unsigned short*)Mem_Malloc( numindices * sizeof( unsigned short ) );
+
+	if ( !pos || !tex || !idx )
+	{
+		if ( pos ) Mem_Free( pos );
+		if ( tex ) Mem_Free( tex );
+		if ( idx ) Mem_Free( idx );
+		return NULL;
+	}
+
+	trivertx_t* posedata = (trivertx_t*)( (byte*)hdr + hdr->posedata );
+
+	for ( int p = 0; p < numposes; p++ )
+	{
+		trivertx_t* v = posedata + p * poseverts;
+		short* out = pos + p * poseverts * 3;
+
+		for ( int k = 0; k < poseverts; k++ )
+		{
+			out[k * 3 + 0] = v[k].v[0];
+			out[k * 3 + 1] = v[k].v[1];
+			out[k * 3 + 2] = v[k].v[2];
+		}
+	}
+
+	{
+		int* o = order;
+		int v = 0;
+		int ii = 0;
+
+		for ( ;; )
+		{
+			int c = *o++;
+
+			if ( !c )
+				break;
+
+			bool fan = c < 0;
+
+			if ( fan ) c = -c;
+
+			const int base = v;
+
+			for ( int k = 0; k < c; k++ )
+			{
+				tex[v * 2 + 0] = ( (float*)o )[0];
+				tex[v * 2 + 1] = ( (float*)o )[1];
+				o += 2;
+				v++;
+			}
+
+			if ( fan )
+			{
+				for ( int k = 1; k + 1 < c; k++ )
+				{
+					idx[ii++] = base;
+					idx[ii++] = base + k;
+					idx[ii++] = base + k + 1;
+				}
+			}
+			else
+			{
+				for ( int k = 0; k + 2 < c; k++ )
+				{
+					if ( k & 1 )
+					{
+						idx[ii++] = base + k + 1;
+						idx[ii++] = base + k;
+						idx[ii++] = base + k + 2;
+					}
+					else
+					{
+						idx[ii++] = base + k;
+						idx[ii++] = base + k + 1;
+						idx[ii++] = base + k + 2;
+					}
+				}
+			}
+		}
+	}
+
+	e = &s_mdlvbo[s_mdlvboCount];
+	memset( e, 0, sizeof( *e ) );
+
+	qglGenBuffersM( 1, &e->vboPos );
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboPos );
+	qglBufferDataM( GL_ARRAY_BUFFER, totalVerts * 3 * sizeof( short ), pos, GL_STATIC_DRAW );
+
+	qglGenBuffersM( 1, &e->vboTex );
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboTex );
+	qglBufferDataM( GL_ARRAY_BUFFER, poseverts * 2 * sizeof( float ), tex, GL_STATIC_DRAW );
+
+	qglGenBuffersM( 1, &e->vboIdx );
+	qglBindBufferM( GL_ELEMENT_ARRAY_BUFFER, e->vboIdx );
+	qglBufferDataM( GL_ELEMENT_ARRAY_BUFFER, numindices * sizeof( unsigned short ), idx, GL_STATIC_DRAW );
+
+	qglGenBuffersM( 1, &e->vboCol );
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboCol );
+	qglBufferDataM( GL_ARRAY_BUFFER, poseverts * 3 * sizeof( float ), NULL, GL_STREAM_DRAW );
+
+	qglBindBufferM( GL_ARRAY_BUFFER, 0 );
+	qglBindBufferM( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+	Mem_Free( pos );
+	Mem_Free( tex );
+	Mem_Free( idx );
+
+	e->model = model;
+	e->hdr = hdr;
+	e->poseverts = poseverts;
+	e->numposes = numposes;
+	e->numindices = numindices;
+
+	s_mdlvboCount++;
+
+	return e;
+}
+
+static void R_MdlVBODraw( mdlvbo_t* e, int poseenum )
+{
+	trivertx_t* verts = (trivertx_t*)( (byte*)e->hdr + e->hdr->posedata ) + poseenum * e->poseverts;
+	const int n = e->poseverts;
+
+	if ( s_mdlColorBufSize < n * 3 )
+	{
+		if ( s_mdlColorBuf ) Mem_Free( s_mdlColorBuf );
+		s_mdlColorBufSize = n * 3 + 1024;
+		s_mdlColorBuf = (float*)Mem_Malloc( s_mdlColorBufSize * sizeof( float ) );
+		if ( !s_mdlColorBuf )
+			return;
+	}
+
+	float* col = s_mdlColorBuf;
+
+	for ( int k = 0; k < n; k++ )
+	{
+		float l = shadedots[verts[k].lightnormalindex] * shadelight;
+		col[k * 3 + 0] = l;
+		col[k * 3 + 1] = l;
+		col[k * 3 + 2] = l;
+	}
+
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboCol );
+	qglBufferDataM( GL_ARRAY_BUFFER, n * 3 * sizeof( float ), col, GL_STREAM_DRAW );
+
+	qglEnableClientState( GL_VERTEX_ARRAY );
+	qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+	qglEnableClientState( GL_COLOR_ARRAY );
+
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboPos );
+	qglVertexPointer( 3, GL_SHORT, 0, (const GLvoid*)( poseenum * n * 3 * sizeof( short ) ) );
+
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboTex );
+	qglTexCoordPointer( 2, GL_FLOAT, 0, (const GLvoid*)0 );
+
+	qglBindBufferM( GL_ARRAY_BUFFER, e->vboCol );
+	qglColorPointer( 3, GL_FLOAT, 0, (const GLvoid*)0 );
+
+	qglBindBufferM( GL_ELEMENT_ARRAY_BUFFER, e->vboIdx );
+	qglDrawElements( GL_TRIANGLES, e->numindices, GL_UNSIGNED_SHORT, (const GLvoid*)0 );
+
+	qglBindBufferM( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	qglBindBufferM( GL_ARRAY_BUFFER, 0 );
+
+	qglDisableClientState( GL_COLOR_ARRAY );
+	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	qglDisableClientState( GL_VERTEX_ARRAY );
+}
+
 /*
 =================
 R_SetupAliasFrame
@@ -570,6 +856,18 @@ void R_SetupAliasFrame( int frame, aliashdr_t* paliashdr )
 	{
 		interval = paliashdr->frames[frame].interval;
 		pose += (int)(cl.time / interval) % numposes;
+	}
+
+	if ( R_MdlVBOAvailable() && currententity->model )
+	{
+		mdlvbo_t* e = R_MdlVBOGet( currententity->model, paliashdr );
+
+		if ( e )
+		{
+			lastposenum = pose;
+			R_MdlVBODraw( e, pose );
+			return;
+		}
 	}
 
 	GL_DrawAliasFrame(paliashdr, pose);
@@ -700,9 +998,14 @@ void R_DrawAliasModel( cl_entity_t* e )
 R_DrawEntitiesOnList
 =============
 */
+extern int r_cached_bone_entity;
+
 void R_DrawEntitiesOnList( void )
 {
 	int		i, j;
+
+	// Cached skeleton data is only valid within a single frame.
+	r_cached_bone_entity = -1;
 
 	if (!r_drawentities.value)
 		return;
@@ -738,15 +1041,23 @@ void R_DrawEntitiesOnList( void )
 					{
 						if (cl_visedicts[j]->index == currententity->curstate.aiment)
 						{
-							currententity = cl_visedicts[j];
+							// The parent skeleton is only (re)evaluated when the
+							// cached bones no longer belong to it. Attached models
+							// no longer clobber the cache, so siblings reuse it.
+							if (r_cached_bone_entity != currententity->curstate.aiment)
+							{
+								currententity = cl_visedicts[j];
 
-							if (currententity->player)
-								pStudioAPI->StudioDrawPlayer(0, &cl.frames[cl.parsecount & CL_UPDATE_MASK].playerstate[currententity->index - 1]);
-							else
-								pStudioAPI->StudioDrawModel(0);
+								if (currententity->player)
+									pStudioAPI->StudioDrawPlayer(0, &cl.frames[cl.parsecount & CL_UPDATE_MASK].playerstate[currententity->index - 1]);
+								else
+									pStudioAPI->StudioDrawModel(0);
 
-							currententity = cl_visedicts[i];
+								currententity = cl_visedicts[i];
+							}
+
 							pStudioAPI->StudioDrawModel(STUDIO_RENDER | STUDIO_EVENTS);
+							break;
 						}
 					}
 				}

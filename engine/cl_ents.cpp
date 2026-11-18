@@ -153,7 +153,7 @@ int CL_ParseDeltaHeader(qboolean *remove, qboolean *custom, int *numbase, qboole
 		*remove = MSG_ReadBits(1) != 0;
 	}
 
-	// когда delta == 1, новое число не записывается в сообщение
+	// пїЅпїЅпїЅпїЅпїЅ delta == 1, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	if (!onlyone)
 	{
 		if (MSG_ReadBits(1))
@@ -194,7 +194,7 @@ int CL_ParseDeltaHeader(qboolean *remove, qboolean *custom, int *numbase, qboole
 	return *numbase;
 }
 
-// убейся нахуй автор сие процедуры
+// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 //-----------------------------------------------------------------------------
 // Purpose: Bad data was received, just flushes incoming delta data.
 //-----------------------------------------------------------------------------
@@ -699,7 +699,7 @@ void CL_ParsePacketEntities(qboolean delta, int *playerbits)
 
 	while (1)
 	{
-		// в этом пакете 16 бит заполненных нулями - завершение
+		// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 16 пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		unsigned int peeklong = MSG_PeekBits(16);
 
 		if (peeklong)
@@ -715,7 +715,7 @@ void CL_ParsePacketEntities(qboolean delta, int *playerbits)
 		else
 			num = 9999;
 
-		// установка индекса в случае наличия в кадре принятых ранее сущностей
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if (newnum > num)
 		{
 			if (uncompressed)
@@ -757,7 +757,7 @@ void CL_ParsePacketEntities(qboolean delta, int *playerbits)
 				if (remove)
 				{
 					R_KillDeadBeams(num);
-					// изменение индекса после удаления сущности?
+					// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
 					oldindex++;
 				}
 				else
@@ -821,7 +821,7 @@ void CL_ParsePacketEntities(qboolean delta, int *playerbits)
 				p_baseline = &cl_entities[newnum].baseline;
 			}
 
-			// создание новой сущности под данным индексом
+			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			CL_EntityNum(newnum);
 
 			if (custom)
@@ -1433,7 +1433,7 @@ void CL_SetSolidEntities()
 
 	for (int i = 0; i < pframe->packet_entities.num_entities; i++)
 	{
-		// индексация энтитей
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		state = &pframe->packet_entities.entities[i];
 
 		if (CL_IsPlayerIndex(state->number))
@@ -1447,8 +1447,8 @@ void CL_SetSolidEntities()
 		if (model == NULL)
 			continue;
 
-		// FIXME : инкрементация не должна выполняться относительно i
-		// 29.12.23 -- к чему этот комментарий? я уже забыл...
+		// FIXME : пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ i
+		// 29.12.23 -- пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ? пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ...
 		if (state->owner != 0 && cl.playernum == state->owner - 1)
 			continue;
 
@@ -1633,9 +1633,9 @@ void CL_MoveAiments()
 	{
 		ent = cl_visedicts[i];
 
-		if (ent->curstate.aiment && ent->curstate.movetype == MOVETYPE_FOLLOW)
+		if (ent->curstate.aiment > 0 && ent->curstate.aiment < cl.max_edicts && cl_entities && ent->curstate.movetype == MOVETYPE_FOLLOW)
 		{
-			VectorCopy(cl_entities[ent->curstate.aiment].curstate.origin, ent->curstate.origin);
+			VectorCopy(cl_entities[ent->curstate.aiment].origin, ent->origin);
 		}
 	}
 }

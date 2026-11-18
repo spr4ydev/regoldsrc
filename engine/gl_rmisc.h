@@ -17,6 +17,7 @@ extern float		filterBrightness;
 
 extern cvar_t r_traceglow;
 extern cvar_t gl_affinemodels;
+extern cvar_t gl_mdl_vbo;
 extern cvar_t r_glowshellfreq;
 extern cvar_t gl_dither;
 

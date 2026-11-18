@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright ï¿½ 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose: 
 //
@@ -28,6 +28,7 @@ cvar_t ati_npatch = { const_cast<char*>("ati_npatch"), const_cast<char*>("1.0"),
 
 cvar_t r_glowshellfreq = { const_cast<char*>("r_glowshellfreq"), const_cast<char*>("2.2") }; // GL_RMISC.C:47
 cvar_t gl_affinemodels = { const_cast<char*>("gl_affinemodels"), const_cast<char*>("0") }; // GL_RMISC.C:52
+cvar_t gl_mdl_vbo = { const_cast<char*>("gl_mdl_vbo"), const_cast<char*>("1"), FCVAR_ARCHIVE }; // VBO-batched MDL models
 cvar_t gl_spriteblend = { const_cast<char*>("gl_spriteblend"), const_cast<char*>("1"), FCVAR_ARCHIVE }; // GL_RMISC.C:57
 cvar_t gl_watersides = { const_cast<char*>("gl_watersides"), const_cast<char*>("0") }; // GL_RMISC.C:63
 
@@ -393,6 +394,7 @@ void R_Init( void )
 	Cvar_RegisterVariable(&gl_clear);
 	Cvar_RegisterVariable(&gl_cull);
 	Cvar_RegisterVariable(&gl_affinemodels);
+	Cvar_RegisterVariable(&gl_mdl_vbo);
 	Cvar_RegisterVariable(&gl_dither);
 	Cvar_RegisterVariable(&gl_spriteblend);
 	Cvar_RegisterVariable(&gl_polyoffset);

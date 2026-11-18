@@ -151,7 +151,7 @@ void CL_InitTEnts()
 	cl_sfx_geiger5 = S_PrecacheSound(const_cast<char*>("player/geiger5.wav"));
 	cl_sfx_geiger6 = S_PrecacheSound(const_cast<char*>("player/geiger6.wav"));
 
-	// кэширование процедурных текстур
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	cl_sprite_dot = CL_TentModel("sprites/dot.spr");
 	cl_sprite_lightning = CL_TentModel("sprites/lgtning.spr");
 	cl_sprite_white = CL_TentModel("sprites/white.spr");
@@ -573,7 +573,7 @@ void R_BreakModel(float* pos, float* size, float* dir, float random, float life,
 	if (!modelIndex)
 		return;
 
-	// фильтрация говна
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	type = flags & (FTENT_FLICKER | FTENT_SLOWGRAVITY | FTENT_ROTATE | FTENT_GRAVITY | FTENT_SINEWAVE);
 
 	pmod = CL_GetModelByIndex(modelIndex);
@@ -1577,7 +1577,7 @@ void CL_ParseTEnt(void)
 {
 	int type;
 
-	// первый байт сообщения типа tent - сигнал
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ tent - пїЅпїЅпїЅпїЅпїЅпїЅ
 	type = MSG_ReadByte();
 
 	switch (type)
@@ -2855,7 +2855,7 @@ void CL_TempEntPlaySound(TEMPENTITY* pTemp, float damp)
 	// V O
 	z = abs(pTemp->entity.baseline.origin[ROLL]);
 
-	// только при нулевом результате проиграется звук
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	if (RandomLong(0, gun ? 3 : 5) && !(gun && z >= 200))
 		return;
 
@@ -3200,7 +3200,10 @@ void R_SpriteColor(colorVec* pColor, cl_entity_t* pEntity, int alpha)
 
 float* R_GetAttachmentPoint(int entity, int attachment)
 {
-	if (attachment)
+	if (!cl_entities || entity < 0 || entity >= cl.max_edicts)
+		return vec3_origin;
+
+	if (attachment > 0 && attachment <= 4)
 		return cl_entities[entity].attachment[attachment - 1];
 
 	return cl_entities[entity].origin;

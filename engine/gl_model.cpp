@@ -124,6 +124,10 @@ void Mod_ClearAll( void )
 	int		i;
 	model_t* mod;
 
+	// Free the MDL VBO geometry cache for models that are about to unload.
+	extern void R_MdlVBOFlush(void);
+	R_MdlVBOFlush();
+
 	for (i = 0, mod = mod_known; i < mod_numknown; i++, mod++)
 	{
 		if (mod->type != mod_alias && mod->needload != (NL_NEEDS_LOADED | NL_UNREFERENCED))

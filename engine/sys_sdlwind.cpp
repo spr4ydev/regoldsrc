@@ -208,6 +208,26 @@ void SDL_SetAttributes(bool tryNewCtx)
 
 bool CGame::CreateGameWindow()
 {
+#ifdef _WIN32
+	{
+		typedef BOOL ( WINAPI *PFN_SetProcessDpiAwarenessContext )( HANDLE );
+		typedef HRESULT ( WINAPI *PFN_SetProcessDpiAwareness )( int );
+
+		PFN_SetProcessDpiAwarenessContext pSetDpiCtx = ( PFN_SetProcessDpiAwarenessContext )GetProcAddress( GetModuleHandleA( "user32.dll" ), "SetProcessDpiAwarenessContext" );
+		BOOL bOk = pSetDpiCtx ? pSetDpiCtx( ( HANDLE )-4 ) : FALSE;
+
+		if ( !bOk )
+		{
+			PFN_SetProcessDpiAwareness pSetDpi = ( PFN_SetProcessDpiAwareness )GetProcAddress( GetModuleHandleA( "shcore.dll" ), "SetProcessDpiAwareness" );
+
+			if ( pSetDpi )
+				pSetDpi( 2 );
+		}
+	}
+#endif
+
+	SDL_SetHint( SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2" );
+
 	if( COM_CheckParm( const_cast<char*>("-noontop") ) )
 		SDL_SetHint( "SDL_ALLOW_TOPMOST", "0" );
 

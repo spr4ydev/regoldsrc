@@ -155,7 +155,7 @@ void DispatchUserMsg(int iMsg)
 
 	MsgSize = pList->iSize;
 
-	// размер не задан явно
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	if (MsgSize == -1)
 		MsgSize = MSG_ReadByte();
 
@@ -288,7 +288,7 @@ void CL_Parse_Sound()
 	if (field_mask & SND_ATTENUATION)
 		attenuation = (float)MSG_ReadBits(8) / 64.f;
 
-	// MARK: как в HL25 использовать дополнительные каналы при старом протоколе?
+	// MARK: пїЅпїЅпїЅ пїЅ HL25 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
 	channel = MSG_ReadBits(3);
 
 	// 11 <- Q_log2(MAX_EDICTS)
@@ -693,7 +693,7 @@ void CL_RegisterResources(sizebuf_t *msg)
 		if (cls.demoplayback == false)
 			CL_SendConsistencyInfo(msg);
 
-		// cl.model_precache: 0 не используется, 1 всегда игровой мир
+		// cl.model_precache: 0 пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 1 пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 		cl.worldmodel = cl.model_precache[1];
 
 		if (cl.worldmodel && cl.maxclients > 0)
@@ -1028,7 +1028,7 @@ void CL_ParseConsistencyInfo()
 		if (cl.num_consistency >= MAX_CONSISTENCY_LIST)
 			return Host_Error("Consistency:  server sent too many filenames\n");
 
-		// выбор свободного элемента и его очистка
+		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		pc = &cl.consistency_list[cl.num_consistency++];
 		Q_memset(pc, 0, sizeof(consistency_t));
 
@@ -1071,7 +1071,7 @@ void CL_ParseResourceList()
 		Q_strncpy(resource->szFileName, MSG_ReadBitString(), sizeof(resource->szFileName) - 1);
 		resource->szFileName[sizeof(resource->szFileName) - 1] = 0;
 
-		// используется как в качестве id`а декали, так и в качестве индекса кэша ресурсов (звук/модель/событие)
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ id`пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 		resource->nIndex = MSG_ReadBits(12);
 
 		resource->nDownloadSize = MSG_ReadBits(24);
@@ -1080,7 +1080,7 @@ void CL_ParseResourceList()
 		if (resource->ucFlags & RES_CUSTOM)
 			MSG_ReadBitData(resource->rgucMD5_hash, sizeof(resource->rgucMD5_hash));
 
-		// дополнительная информация для конкретного типа ресурса
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if (MSG_ReadBits(1))
 			MSG_ReadBitData(resource->rguc_reserved, sizeof(resource->rguc_reserved));
 
@@ -1350,12 +1350,15 @@ int CL_BuildMapCycleListHints(char** hints, char* mapCycleMsg, char* firstMap)
 	char szMap[524];
 	char mapLine[524];
 
-	int length = strlen(mapCycleMsg);
-
-	if (!mapCycleMsg || !length)
+	if (!mapCycleMsg)
 		return 1;
 
-	sprintf(szMap, "%s\\%s\\%s%s\r\n%s\\%s\\%s%s\r\n", 
+	int length = strlen(mapCycleMsg);
+
+	if (!length)
+		return 1;
+
+	snprintf(szMap, sizeof(szMap), "%s\\%s\\%s%s\r\n%s\\%s\\%s%s\r\n", 
 		szReslistsBaseDir, GetCurrentSteamAppName(), szCommonPreloads, szReslistsExt, szReslistsBaseDir, GetCurrentSteamAppName(), firstMap, szReslistsExt);
 
 	*hints = (char*)Mem_ZeroMalloc(strlen(szMap) + 1);
@@ -1382,7 +1385,7 @@ int CL_BuildMapCycleListHints(char** hints, char* mapCycleMsg, char* firstMap)
 
 		if (PF_IsMapValid_I(szMap) && strcmp(firstMap, szMap))
 		{
-			sprintf(mapLine, "%s\\%s\\%s%s\r\n", szReslistsBaseDir, GetCurrentSteamAppName(), szMap, szReslistsExt);
+			snprintf(mapLine, sizeof(mapLine), "%s\\%s\\%s%s\r\n", szReslistsBaseDir, GetCurrentSteamAppName(), szMap, szReslistsExt);
 
 			*hints = (char*)Mem_Realloc(*hints, strlen(mapLine) + strlen(*hints) + 2);
 
@@ -1393,7 +1396,7 @@ int CL_BuildMapCycleListHints(char** hints, char* mapCycleMsg, char* firstMap)
 		}
 	}
 
-	sprintf(szMap, "%s\\%s\\mp_maps.txt\r\n", szReslistsBaseDir, GetCurrentSteamAppName());
+	snprintf(szMap, sizeof(szMap), "%s\\%s\\mp_maps.txt\r\n", szReslistsBaseDir, GetCurrentSteamAppName());
 
 	*hints = (char*)realloc(*hints, strlen(szMap) + strlen(*hints) + 2);
 
@@ -1552,7 +1555,7 @@ void CL_ParseBaseline()
 		ent->baseline.entityType = type;
 	}
 
-	// завершающие 16 бит
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 16 пїЅпїЅпїЅ
 	MSG_ReadBits(16);
 
 	Q_memset(cl.instanced_baseline, 0, sizeof(cl.instanced_baseline));
@@ -1957,9 +1960,9 @@ void CL_ParseServerMessage(qboolean normal_message /* = true */)
 			if (cmd == svc_bad)
 			{
 				CL_WriteMessageHistory(bufDefault, 0);
-				// MARK:: return здесь даёт зайти на сервер несмотря на все сетевые ошибки,
-				// но сам мир при этом не отобразится, звуки не будут проигрываться
-				// только регулярные clc_move и по возможности clc_setpause
+				// MARK:: return пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ,
+				// пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+				// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ clc_move пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ clc_setpause
 				// return;
 				Host_Error("CL_ParseServerMessage: Illegible server message - %s\n", cl_parsefuncs[cmd].pszname);
 			}
@@ -2273,7 +2276,7 @@ qboolean ValidStuffText(const char *cmd)
 
 	if (pos != NULL && pos1 != NULL && pos1 == &pos[2])
 	{
-		// MARK: при индексации от 0 первый аргумент "onnect..."
+		// MARK: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 0 пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "onnect..."
 		pos1 = Q_stristr(&pos[3], "connect ");
 	}
 
@@ -2320,7 +2323,7 @@ qboolean ValidStuffText(const char *cmd)
 	bGoodCommand &= Q_stristr(cmd, "volume") == NULL;
 	bGoodCommand &= Q_stristr(cmd, "mp3volume") == NULL;
 
-	// поиск остальных всевозможных команд, связанных с клиентом, рендером, HUD или вводом
+	// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, HUD пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 	pos = Q_stristr(cmd, "cl_");
 	if (pos != NULL)
@@ -2354,7 +2357,7 @@ qboolean ValidStuffText(const char *cmd)
 
 	strLen = strlen(cmd);
 
-	// поиск шеллкода
+	// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
 	for (int i = 0; i < strLen; i++)
 	{
@@ -2748,7 +2751,7 @@ event_info_t *CL_FindUnreliableEvent()
 	return NULL;
 }
 
-// копия CL_QueueEvent, реализация применения client_index на откуп мододелам
+// пїЅпїЅпїЅпїЅпїЅ CL_QueueEvent, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ client_index пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void CL_ClientQueueEvent(int flags, int index, int client_index, float delay, event_args_t *pargs)
 {
 	event_info_t *p_events;
@@ -2808,9 +2811,9 @@ void CL_ParseEvent()
 	MSG_StartBitReading(&net_message);
 
 	/*****************************
-	* формат:
-	* бит наличия
-	* атрибут (если бит наличия равен 1)
+	* пїЅпїЅпїЅпїЅпїЅпїЅ:
+	* пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+	* пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 1)
 	******************************/
 	num_events = MSG_ReadBits(5);
 	for (int i = 0; i < num_events; i++)
@@ -2828,8 +2831,8 @@ void CL_ParseEvent()
 			if (!referenced)
 				Con_SafePrintf("event %d has no packet index\r\n", event_index);
 #endif
-			// 22.09.25 - дельта в оригинале считывается даже при нулевом бите packet_index
-			// MARK: нужна ли здесь проверка на packet_index?
+			// 22.09.25 - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ packet_index
+			// MARK: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ packet_index?
 			// args
 			referenced = MSG_ReadBits(1);
 			if (referenced)
@@ -2944,13 +2947,13 @@ void CL_Parse_Director()
 {
 	int length;
 
-	// структура: 1 байт [длина] + [длина] байт [данные]
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: 1 пїЅпїЅпїЅпїЅ [пїЅпїЅпїЅпїЅпїЅ] + [пїЅпїЅпїЅпїЅпїЅ] пїЅпїЅпїЅпїЅ [пїЅпїЅпїЅпїЅпїЅпїЅ]
 
 	length = MSG_ReadByte();
 
 	ClientDLL_DirectorMessage(length, &net_message.data[msg_readcount]);
 
-	// по-хорошему эту работу должен делать MSG_ReadBuf, но обработка происходит на стороне пользовательского клиента, поэтому добавляем длину к прочитанным байтам
+	// пїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ MSG_ReadBuf, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	msg_readcount += length;
 }
 
@@ -2966,7 +2969,7 @@ void CL_Parse_VoiceInit()
 {
 	int quality;
 
-	// с обновления steampipe у всех клиентов единый кодек - steam silk
+	// пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ steampipe пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ - steam silk
 	MSG_ReadString();
 
 	quality = MSG_ReadByte();

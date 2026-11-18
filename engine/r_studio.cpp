@@ -46,6 +46,7 @@ int r_cachecurrent;
 
 float omega, cosom, sinom, sclp, sclq;
 int cached_numbones;
+int r_cached_bone_entity = -1;	// entity index whose skeleton is in cached_bonetransform
 cache_user_t model_texture_cache[1024][32];
 
 hull_t studio_hull[STUDIO_NUM_HULLS];
@@ -54,6 +55,7 @@ dclipnode_t studio_clipnodes[6];
 mplane_t studio_planes[STUDIO_NUM_PLANES];
 
 char cached_bonename[MAXSTUDIOBONES * 32];
+unsigned int cached_bonehash[MAXSTUDIOBONES];
 int r_amodels_drawn;
 int r_smodels_total;
 
@@ -1374,6 +1376,23 @@ void MatrixCopy(float in[3][4], float out[3][4])
 	Q_memcpy(out, in, sizeof(float) * 3 * 4);
 }
 
+// Case-insensitive bone name hash, used to avoid O(n^2) string compares when
+// merging submodel bones (weapons/attached models) with the parent skeleton.
+static unsigned int R_BoneNameHash(const char* s)
+{
+	unsigned int h = 2166136261u;
+
+	while (*s)
+	{
+		unsigned int c = (unsigned char)*s++;
+		if (c >= 'A' && c <= 'Z')
+			c |= 0x20;
+		h = (h ^ c) * 16777619u;
+	}
+
+	return h;
+}
+
 void R_StudioSaveBones(void)
 {
 	int		i;
@@ -1386,9 +1405,12 @@ void R_StudioSaveBones(void)
 	for (i = 0; i < pstudiohdr->numbones; i++)
 	{
 		Q_strcpy(&cached_bonename[i * sizeof(pbones[i].name)], pbones[i].name);
+		cached_bonehash[i] = R_BoneNameHash(&cached_bonename[i]);
 		MatrixCopy(bonetransform[i], cached_bonetransform[i]);
 		MatrixCopy(lighttransform[i], cached_lighttransform[i]);
 	}
+
+	r_cached_bone_entity = currententity ? currententity->index : -1;
 }
 
 void R_StudioMergeBones(model_t* psubmodel)
@@ -1427,9 +1449,11 @@ void R_StudioMergeBones(model_t* psubmodel)
 
 	for (i = 0; i < pstudiohdr->numbones; i++)
 	{
+		const unsigned int boneHash = R_BoneNameHash(pbones[i].name);
+
 		for (j = 0; j < cached_numbones; j++)
 		{
-			if (Q_strcasecmp(pbones[i].name, &cached_bonename[j]) == 0)
+			if (cached_bonehash[j] == boneHash && Q_strcasecmp(pbones[i].name, &cached_bonename[j]) == 0)
 			{
 				MatrixCopy(cached_bonetransform[j], bonetransform[i]);
 				MatrixCopy(cached_lighttransform[j], lighttransform[i]);
@@ -1731,7 +1755,7 @@ void R_StudioClientEvents(void)
 			dl->color.b = 64;
 		}
 
-		// эффект спаршен, снимаем флаг
+		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		currententity->curstate.effects &= ~EF_MUZZLEFLASH;
 	}
 
@@ -2022,7 +2046,7 @@ void R_StudioEntityLight(alight_t* plight)
 			{
 				lstrength[idx] = strength;
 				locallight[idx] = &cl_elights[i];
-				// квадрат радиуса
+				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 				locallightR2[idx] = rad;
 				locallinearlight[idx][0] = lineargammatable[4 * cl_elights[i].color.r];
 				locallinearlight[idx][1] = lineargammatable[4 * cl_elights[i].color.g];
@@ -2235,8 +2259,8 @@ void R_StudioDrawBones(void)
 
 			R_StudioLighting(&lv, -1, 0, tmp);
 #if !defined(GLQUAKE)
-			// такая операция выполняется только в софтваре
-			// деление на 65536 происходит от того, что для ogl значение яркости делится на 1023, а для software умножается на 64
+			// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 65536 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ ogl пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1023, пїЅ пїЅпїЅпїЅ software пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 64
 			lv /= (float)0x10000;
 #endif
 
@@ -2345,7 +2369,7 @@ void BuildNormalIndexTable(void)
 		g_NormalIndex[i] = 255;
 
 	pmesh = (mstudiomesh_t*)((byte*)pstudiohdr + psubmodel->meshindex);
-	// mstudiotrivert_t в количестве n сразу же после задания n (2 байта)
+	// mstudiotrivert_t пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ n пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ n (2 пїЅпїЅпїЅпїЅпїЅ)
 	ptri = (short*)((byte*)pstudiohdr + pmesh->triindex);
 
 	for (i = 0; i < psubmodel->nummesh; i++, pmesh++)
@@ -2559,7 +2583,7 @@ skin_t* R_StudioGetSkin(int keynum, int index)
 #define PLATE_HUE_START 160
 #define PLATE_HUE_END 191
 
-// для софта тип палитры PackedColorVec*, для огл color24*
+// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ PackedColorVec*, пїЅпїЅпїЅ пїЅпїЅпїЅ color24*
 static void PaletteHueReplace(
 #if !defined(GLQUAKE)
 	PackedColorVec* palSrc,
@@ -2857,7 +2881,7 @@ void R_LightLambert(float(*light)[4], float* normal, int* lambert)
 	if (!numlights)
 	{
 #if defined (GLQUAKE)
-		// 3 аргумент - float*src, тип 4-го - float*
+		// 3 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - float*src, пїЅпїЅпїЅ 4-пїЅпїЅ - float*
 		VectorCopy(src, lambert);
 #endif
 		return;
@@ -3211,7 +3235,7 @@ void R_StudioDrawPoints(void)
 	R_GLStudioDrawPoints();
 }
 #else
-// отрисовка текстурированных треугольников в параметрической системе координат st
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ st
 void R_StudioDrawPoints(void)
 {
 	byte *pvbone, *pnbone;
@@ -3324,10 +3348,10 @@ void R_StudioDrawPoints(void)
 		ptri = (short*)((byte*)pstudiohdr + pstudiomesh[i].triindex);
 		r_affinetridesc.drawtype = 0;
 
-		// формат размещения:
+		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:
 		// 00 short - vert count
 		// 02 count * mstudiotrivert_t (8 bytes)
-		// парс до тех пор пока число вершин не будет равно нулю
+		// пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
 		while ((tri = *(ptri++)) != NULL)
 		{
@@ -3565,7 +3589,7 @@ void R_StudioRenderFinal(void)
 	zishift = 0.0f;
 
 	ziscale = (float)(INFINITE_DISTANCE * ZISCALE);
-	// если рисуемая модель - вид (wvp -> v)
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅ (wvp -> v)
 	if (&cl.viewent == currententity)
 		ziscale = (float)(INFINITE_DISTANCE * ZISCALE) * 3;
 
@@ -3691,13 +3715,16 @@ int R_StudioDrawModel(int flags)
 
 	if (currententity->curstate.movetype == MOVETYPE_FOLLOW)
 	{
+		// Merge against the parent skeleton, but keep it cached: attached
+		// models must not overwrite cached_bonetransform, otherwise every
+		// following attached model would force the parent to be re-posed.
 		R_StudioMergeBones(r_model);
 	}
 	else
 	{
 		R_StudioSetupBones();
+		R_StudioSaveBones();
 	}
-	R_StudioSaveBones();
 
 	if (flags & STUDIO_EVENTS)
 	{
@@ -4432,7 +4459,7 @@ qboolean DoesSphereIntersect(float* vSphereCenter, float fSphereRadiusSquared, f
 	b = DotProduct(P, vLineDir) * 2;
 	c = DotProduct(P, P) - fSphereRadiusSquared;
 	D = b * b - 4.f * a * c;
-	// объекты пересекаются, если дискриминант больше 0
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 0
 	return D > 0.000001;
 }
 
@@ -4738,7 +4765,7 @@ void studioapi_SetupRenderer(int rendermode)
 	zishift = 0.0f;
 
 	ziscale = (float)(INFINITE_DISTANCE * ZISCALE); // 2147483600.0f;
-	// если рисуемая модель - вид (wvp -> v)
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅ (wvp -> v)
 	if (&cl.viewent == currententity)
 		ziscale = (float)(INFINITE_DISTANCE * ZISCALE) * 3; // 6442450900.0f
 
@@ -4748,7 +4775,7 @@ void studioapi_SetupRenderer(int rendermode)
 
 void studioapi_RestoreRenderer()
 {
-	// в софтваре нечего ресторить!
+	// пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
 #if defined(GLQUAKE)
 	if (g_rendermode)
 		qglDisable(GL_BLEND);
@@ -4797,7 +4824,7 @@ void GLR_StudioDrawShadow()
 
 		c_alias_polys += pmesh->numtris;
 
-		// mstudiotrivert_t в количестве n сразу же после задания n (2 байта)
+		// mstudiotrivert_t пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ n пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ n (2 пїЅпїЅпїЅпїЅпїЅ)
 		ptricmds = (short*)((byte*)pstudiohdr + pmesh->triindex);
 
 		while (((tri = *(ptricmds++)) != 0))
@@ -4922,7 +4949,7 @@ void studioapi_SetBackFaceCull(int iCull)
 
 void studioapi_RenderShadow(int iSprite, float* p1, float* p2, float* p3, float* p4)
 {
-	// почему софтвар не может?
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ?
 #if defined (GLQUAKE)
 	model_t* mod;
 

@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -3359,7 +3359,10 @@ void Panel::SetBuildGroup(BuildGroup* buildGroup)
 	
 	_buildGroup = buildGroup;
 
-	_buildGroup->PanelAdded(this);
+	BuildGroup* pBuildGroup = _buildGroup.Get();
+
+	if (pBuildGroup)
+		pBuildGroup->PanelAdded(this);
 }
 
 bool Panel::IsBuildGroupEnabled()

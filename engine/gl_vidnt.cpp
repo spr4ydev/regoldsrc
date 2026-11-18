@@ -79,6 +79,14 @@ extern void (*VID_FlipScreen)(void);
 extern int gl_filter_min;
 extern SDL_Window* pmainwindow;
 
+// MDL model VBO entry points (loaded via SDL, used by gl_rmain.cpp)
+PFNGLGENBUFFERSPROC    qglGenBuffersM = NULL;
+PFNGLBINDBUFFERPROC    qglBindBufferM = NULL;
+PFNGLBUFFERDATAPROC    qglBufferDataM = NULL;
+PFNGLDELETEBUFFERSPROC qglDeleteBuffersM = NULL;
+
+extern void R_MdlVBOInvalidate(void);
+
 static int s_bEnforceAspect = TRUE;
 static float s_fXMouseAspectAdjustment = 1.0, s_fYMouseAspectAdjustment = 1.0;
 
@@ -388,6 +396,15 @@ void GL_Init( void )
 	CheckMultiTextureExtensions();
 	CheckATINPatchExtensions();
 
+	// Load buffer object entry points for the MDL VBO renderer.
+	qglGenBuffersM    = (PFNGLGENBUFFERSPROC)SDL_GL_GetProcAddress("glGenBuffers");
+	qglBindBufferM    = (PFNGLBINDBUFFERPROC)SDL_GL_GetProcAddress("glBindBuffer");
+	qglBufferDataM    = (PFNGLBUFFERDATAPROC)SDL_GL_GetProcAddress("glBufferData");
+	qglDeleteBuffersM = (PFNGLDELETEBUFFERSPROC)SDL_GL_GetProcAddress("glDeleteBuffers");
+
+	// A fresh GL context invalidates any cached buffer names.
+	R_MdlVBOInvalidate();
+
 	if (gl_extensions && Q_strstr(gl_extensions, "GL_ARB_texture_non_power_of_two"))
 	{
 		g_bSupportsNPOTTextures = TRUE;
@@ -430,10 +447,24 @@ void GL_BeginRendering( int* x, int* y, int* width, int* height )
 	extern cvar_t gl_clear;
 
 	*x = *y = 0;
-	if (VideoMode_IsWindowed())
+	if (VideoMode_IsWindowed() || !s_BackBufferFBO.s_hBackBufferFBO)
 	{
-		*width = window_rect.right - window_rect.left;
-		*height = window_rect.bottom - window_rect.top;
+		int dw = 0, dh = 0;
+		SDL_GL_GetDrawableSize((SDL_Window*)pmainwindow, &dw, &dh);
+
+		if (dw <= 0 || dh <= 0)
+		{
+			SDL_GetWindowSize((SDL_Window*)pmainwindow, &dw, &dh);
+		}
+
+		if (dw <= 0 || dh <= 0)
+		{
+			dw = window_rect.right - window_rect.left;
+			dh = window_rect.bottom - window_rect.top;
+		}
+
+		*width = dw;
+		*height = dh;
 	}
 	else
 	{

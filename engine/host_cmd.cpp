@@ -1014,7 +1014,7 @@ void Host_Map_f(void)
 
 	CL_Disconnect();
 
-	// состояние career сохраняется перед разрывом соединения и затем восстанавливается
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ career пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	if (careerState == CAREER_LOADING)
 		g_careerState = CAREER_LOADING;
 
@@ -1862,6 +1862,8 @@ SAVERESTOREDATA* SaveGamestate(void)
 	
 	gEntityInterface.pfnParmsChangeLevel();
 	
+	memset(&header, 0, sizeof(header));
+
 	header.version = build_number();
 	header.skillLevel = (int)skill.value;
 	header.entityCount = pSaveData->tableCount;
@@ -2004,7 +2006,7 @@ void CL_Save(const char* name)
 
 	for (int i = 0; i < decalCount; i++)
 	{
-		// указатель name в структуре ссылается на имя кэшированной текстуры, состоящей из 16 байт
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ name пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 16 пїЅпїЅпїЅпїЅ
 		FS_Write(decalList[i].name, offsetof(decalname_t, ucFlags) - offsetof(decalname_t, name), 1, file);
 		FS_Write(&decalList[i].entityIndex, sizeof(decalList[i].entityIndex), 1, file);
 		FS_Write(&decalList[i].depth, sizeof(decalList[i].depth), 1, file);
@@ -2179,11 +2181,19 @@ void ParseSaveTables(SAVERESTOREDATA* pSaveData, SAVE_HEADER* pHeader, int updat
 	if (updateGlobals)
 		memset(sv.lightstyles, 0, sizeof(sv.lightstyles));
 
-	for (i = 0; i < pHeader->lightStyleCount; i++)
+	int lightStyleCount = pHeader->lightStyleCount;
+
+	if (lightStyleCount < 0 || lightStyleCount > MAX_LIGHTSTYLES)
+	{
+		Con_Printf(const_cast<char*>("WARNING: invalid lightStyleCount %d in save, clamping to %d\n"), lightStyleCount, MAX_LIGHTSTYLES);
+		lightStyleCount = MAX_LIGHTSTYLES;
+	}
+
+	for (i = 0; i < lightStyleCount; i++)
 	{
 		gEntityInterface.pfnSaveReadFields(pSaveData, "LIGHTSTYLE", &light, gLightstyleDescription, ARRAYSIZE(gLightstyleDescription));
 
-		if (updateGlobals)
+		if (updateGlobals && light.index >= 0 && light.index < MAX_LIGHTSTYLES)
 		{
 			// @SH_CODE: broken length determination, ARRAYSIZE of pointer is always 4...
 			// That's why WON is better
